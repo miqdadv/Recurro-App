@@ -52,7 +52,10 @@ export default function SignIn() {
 
       if (signIn.status === "complete") {
         await finishSignIn();
-      } else if (signIn.status === "needs_client_trust") {
+      } else if (
+        signIn.status === "needs_client_trust" ||
+        signIn.status === "needs_second_factor"
+      ) {
         const emailFactor = signIn.supportedSecondFactors.find(
           (factor) => factor.strategy === "email_code",
         );
@@ -62,8 +65,6 @@ export default function SignIn() {
         }
         await signIn.mfa.sendEmailCode();
         setVerificationRequired(true);
-      } else if (signIn.status === "needs_second_factor") {
-        setFormError("This account requires an additional verification method.");
       } else {
         setFormError("We need a little more information to finish signing you in.");
       }
@@ -81,6 +82,18 @@ export default function SignIn() {
       else setFormError("That code could not complete verification. Please request a new one.");
     } catch (error) {
       setFormError(getAuthError(error, "That code is invalid or has expired."));
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (isBusy) return;
+    setFormError(null);
+    try {
+      await signIn.mfa.sendEmailCode();
+    } catch (error) {
+      setFormError(
+        getAuthError(error, "We couldn't send a new code. Please try again."),
+      );
     }
   };
 
@@ -119,7 +132,7 @@ export default function SignIn() {
           >
             {isBusy ? <ActivityIndicator color="#081126" /> : <Text className="auth-button-text">Verify and continue</Text>}
           </Pressable>
-          <Pressable className="auth-secondary-button" onPress={() => signIn.mfa.sendEmailCode()} disabled={isBusy}>
+          <Pressable className="auth-secondary-button" onPress={handleResendCode} disabled={isBusy}>
             <Text className="auth-secondary-button-text">Send a new code</Text>
           </Pressable>
           <Pressable onPress={() => { signIn.reset(); setVerificationRequired(false); setCode(""); }}>
