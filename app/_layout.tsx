@@ -3,8 +3,16 @@ import "@/global.css";
 import { SplashScreen, Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
+import { ClerkProvider } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 
 SplashScreen.preventAutoHideAsync();
+
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+if (!publishableKey) {
+  throw new Error("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is missing from .env");
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -27,10 +35,12 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack initialRouteName="(tabs)" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="onboarding" />
-    </Stack>
+    <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="onboarding" />
+      </Stack>
+    </ClerkProvider>
   );
 }
