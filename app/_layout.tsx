@@ -11,7 +11,9 @@ SplashScreen.preventAutoHideAsync();
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 if (!publishableKey) {
-  throw new Error("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is missing from .env");
+  throw new Error(
+    "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is missing from the environment configuration",
+  );
 }
 
 export default function RootLayout() {
