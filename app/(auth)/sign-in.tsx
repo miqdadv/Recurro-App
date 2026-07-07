@@ -11,6 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { track } from "@/lib/analytics/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 export default function SignIn() {
   const { signIn, errors, fetchStatus } = useSignIn();
@@ -26,32 +28,63 @@ export default function SignIn() {
   const canSubmit = isValidEmail(email) && password.length > 0 && !isBusy;
 
   const finishSignIn = async () => {
+    let completed = true;
     await signIn.finalize({
       navigate: ({ session }) => {
         if (session?.currentTask) {
-          setFormError("One more account step is required before you can continue.");
+          completed = false;
+          const reason = "One more account step is required before you can continue.";
+          setFormError(reason);
+          track(AnalyticsEvents.AuthSignInFailed, {
+            method: "password",
+            reason,
+            stage: "finalize",
+          });
           return;
         }
-        router.replace("/(tabs)");
+        // router.replace("/(tabs)");
       },
     });
+    return completed;
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      track(AnalyticsEvents.AuthValidationFailed, {
+        form_name: "sign_in",
+        fields: [
+          ...(!isValidEmail(email) ? ["email"] : []),
+          ...(password.length === 0 ? ["password"] : []),
+        ],
+      });
+      return;
+    }
     setFormError(null);
+    track(AnalyticsEvents.AuthSignInStarted, { method: "password" });
     try {
       const { error } = await signIn.password({
         emailAddress: normalizeEmail(email),
         password,
       });
       if (error) {
-        setFormError(getAuthError(error, "We couldn't sign you in. Check your details and try again."));
+        const reason = getAuthError(error, "We couldn't sign you in. Check your details and try again.");
+        setFormError(reason);
+        track(AnalyticsEvents.AuthSignInFailed, {
+          method: "password",
+          reason,
+          stage: "password",
+        });
         return;
       }
 
       if (signIn.status === "complete") {
-        await finishSignIn();
+        const completed = await finishSignIn();
+        if (completed) {
+          track(AnalyticsEvents.AuthSignInSucceeded, {
+            method: "password",
+            verification_required: false,
+          });
+        }
       } else if (
         signIn.status === "needs_client_trust" ||
         signIn.status === "needs_second_factor"
@@ -60,28 +93,76 @@ export default function SignIn() {
           (factor) => factor.strategy === "email_code",
         );
         if (!emailFactor) {
-          setFormError("This account needs an additional verification method.");
+          const reason = "This account needs an additional verification method.";
+          setFormError(reason);
+          track(AnalyticsEvents.AuthSignInFailed, {
+            method: "password",
+            reason,
+            stage: "mfa",
+          });
           return;
         }
         await signIn.mfa.sendEmailCode();
         setVerificationRequired(true);
       } else {
-        setFormError("We need a little more information to finish signing you in.");
+        const reason = "We need a little more information to finish signing you in.";
+        setFormError(reason);
+        track(AnalyticsEvents.AuthSignInFailed, {
+          method: "password",
+          reason,
+          stage: "password",
+        });
       }
     } catch (error) {
-      setFormError(getAuthError(error, "Something went wrong. Please try again."));
+      const reason = getAuthError(error, "Something went wrong. Please try again.");
+      setFormError(reason);
+      track(AnalyticsEvents.AuthSignInFailed, {
+        method: "password",
+        reason,
+        stage: "password",
+      });
     }
   };
 
   const handleVerify = async () => {
-    if (code.trim().length < 6 || isBusy) return;
+    if (code.trim().length < 6 || isBusy) {
+      if (code.trim().length < 6) {
+        track(AnalyticsEvents.AuthValidationFailed, {
+          form_name: "sign_in",
+          fields: ["code"],
+        });
+      }
+      return;
+    }
     setFormError(null);
     try {
       await signIn.mfa.verifyEmailCode({ code: code.trim() });
-      if (signIn.status === "complete") await finishSignIn();
-      else setFormError("That code could not complete verification. Please request a new one.");
+      if (signIn.status === "complete") {
+        const completed = await finishSignIn();
+        if (completed) {
+          track(AnalyticsEvents.AuthSignInSucceeded, {
+            method: "email_code",
+            verification_required: true,
+          });
+        }
+      }
+      else {
+        const reason = "That code could not complete verification. Please request a new one.";
+        setFormError(reason);
+        track(AnalyticsEvents.AuthSignInFailed, {
+          method: "email_code",
+          reason,
+          stage: "mfa",
+        });
+      }
     } catch (error) {
-      setFormError(getAuthError(error, "That code is invalid or has expired."));
+      const reason = getAuthError(error, "That code is invalid or has expired.");
+      setFormError(reason);
+      track(AnalyticsEvents.AuthSignInFailed, {
+        method: "email_code",
+        reason,
+        stage: "mfa",
+      });
     }
   };
 
@@ -91,9 +172,13 @@ export default function SignIn() {
     try {
       await signIn.mfa.sendEmailCode();
     } catch (error) {
-      setFormError(
-        getAuthError(error, "We couldn't send a new code. Please try again."),
-      );
+      const reason = getAuthError(error, "We couldn't send a new code. Please try again.");
+      setFormError(reason);
+      track(AnalyticsEvents.AuthSignInFailed, {
+        method: "email_code",
+        reason,
+        stage: "resend_code",
+      });
     }
   };
 

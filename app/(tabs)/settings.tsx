@@ -4,6 +4,8 @@ import { styled } from "nativewind";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useClerk } from "@clerk/expo";
 import { useRouter } from "expo-router";
+import { reset, track } from "@/lib/analytics/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -17,7 +19,9 @@ export default function Settings() {
 
     setIsSigningOut(true);
     try {
+      track(AnalyticsEvents.Logout);
       await signOut();
+      reset();
       router.replace("/(auth)/sign-in");
     } finally {
       setIsSigningOut(false);

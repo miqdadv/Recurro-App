@@ -5,6 +5,9 @@ import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
+import { PostHogProvider } from "posthog-react-native";
+import { useAnalyticsClient, useClerkAnalyticsIdentity } from "@/lib/analytics/hooks";
+import { useExpoRouterScreenTracking } from "@/lib/analytics/screenTracking";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +29,9 @@ function AppNavigator() {
     "sans-light": require("../assets/fonts/PlusJakartaSans-Light.ttf"),
   });
   const { isLoaded: isAuthLoaded } = useAuth();
+  useAnalyticsClient();
+  useClerkAnalyticsIdentity();
+  useExpoRouterScreenTracking();
 
   useEffect(() => {
     if (fontsLoaded && isAuthLoaded) {
@@ -48,8 +54,19 @@ function AppNavigator() {
 
 export default function RootLayout() {
   return (
+    <PostHogProvider
+     apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY!}
+     options={{
+       host: process.env.EXPO_PUBLIC_POSTHOG_HOST!,
+     }}
+     autocapture={{
+       captureScreens: false,
+       captureTouches: true,
+     }}
+    >
     <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
       <AppNavigator />
     </ClerkProvider>
+    </PostHogProvider>
   );
 }

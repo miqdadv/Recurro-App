@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { track } from "@/lib/analytics/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 export default function SignUp() {
   const { signUp, errors, fetchStatus } = useSignUp();
@@ -20,41 +22,113 @@ export default function SignUp() {
   const canSubmit = isValidEmail(email) && isStrongPassword(password) && !isBusy;
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      track(AnalyticsEvents.AuthValidationFailed, {
+        form_name: "sign_up",
+        fields: [
+          ...(!isValidEmail(email) ? ["email"] : []),
+          ...(!isStrongPassword(password) ? ["password"] : []),
+        ],
+      });
+      return;
+    }
     setFormError(null);
+    track(AnalyticsEvents.AuthSignUpStarted, { method: "password" });
     try {
       const { error } = await signUp.password({ emailAddress: normalizeEmail(email), password });
       if (error) {
-        setFormError(getAuthError(error, "We couldn't create your account. Please try again."));
+        const reason = getAuthError(error, "We couldn't create your account. Please try again.");
+        setFormError(reason);
+        track(AnalyticsEvents.AuthSignUpFailed, {
+          method: "password",
+          reason,
+          stage: "create",
+        });
         return;
       }
       await signUp.verifications.sendEmailCode();
       setAwaitingCode(true);
     } catch (error) {
-      setFormError(getAuthError(error, "Something went wrong. Please try again."));
+      const reason = getAuthError(error, "Something went wrong. Please try again.");
+      setFormError(reason);
+      track(AnalyticsEvents.AuthSignUpFailed, {
+        method: "password",
+        reason,
+        stage: "create",
+      });
     }
   };
 
   const handleVerify = async () => {
-    if (code.length !== 6 || isBusy) return;
+    if (code.length !== 6 || isBusy) {
+      if (code.length !== 6) {
+        track(AnalyticsEvents.AuthValidationFailed, {
+          form_name: "sign_up",
+          fields: ["code"],
+        });
+      }
+      return;
+    }
     setFormError(null);
     try {
       await signUp.verifications.verifyEmailCode({ code });
       if (signUp.status !== "complete") {
-        setFormError("We couldn't finish setting up your account. Please request a new code.");
+        const reason = "We couldn't finish setting up your account. Please request a new code.";
+        setFormError(reason);
+        track(AnalyticsEvents.AuthSignUpFailed, {
+          method: "email_code",
+          reason,
+          stage: "verify",
+        });
         return;
       }
+      let completed = true;
       await signUp.finalize({
         navigate: ({ session }) => {
           if (session?.currentTask) {
-            setFormError("One more account step is required before you can continue.");
+            completed = false;
+            const reason = "One more account step is required before you can continue.";
+            setFormError(reason);
+            track(AnalyticsEvents.AuthSignUpFailed, {
+              method: "email_code",
+              reason,
+              stage: "finalize",
+            });
             return;
           }
-          router.replace("/(tabs)");
+          // router.replace("/(tabs)");
         },
       });
+      if (completed) {
+        track(AnalyticsEvents.AuthSignUpSucceeded, {
+          method: "email_code",
+          verification_required: true,
+        });
+      }
     } catch (error) {
-      setFormError(getAuthError(error, "That code is invalid or has expired."));
+      const reason = getAuthError(error, "That code is invalid or has expired.");
+      setFormError(reason);
+      track(AnalyticsEvents.AuthSignUpFailed, {
+        method: "email_code",
+        reason,
+        stage: "verify",
+      });
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (isBusy) return;
+    setFormError(null);
+    try {
+      await signUp.verifications.sendEmailCode();
+    } catch (error) {
+      const reason = getAuthError(error, "We couldn't send a new code. Please try again.");
+      setFormError(reason);
+      track(AnalyticsEvents.AuthSignUpFailed, {
+        method: "email_code",
+        reason,
+        stage: "resend_code",
+      });
     }
   };
 
@@ -83,7 +157,7 @@ export default function SignUp() {
           <Pressable className={`auth-button ${code.length !== 6 || isBusy ? "auth-button-disabled" : ""}`} onPress={handleVerify} disabled={code.length !== 6 || isBusy}>
             {isBusy ? <ActivityIndicator color="#081126" /> : <Text className="auth-button-text">Verify and start tracking</Text>}
           </Pressable>
-          <Pressable className="auth-secondary-button" onPress={() => signUp.verifications.sendEmailCode()} disabled={isBusy}>
+          <Pressable className="auth-secondary-button" onPress={handleResendCode} disabled={isBusy}>
             <Text className="auth-secondary-button-text">Send a new code</Text>
           </Pressable>
           <Pressable onPress={() => { signUp.reset(); setAwaitingCode(false); setCode(""); }}>

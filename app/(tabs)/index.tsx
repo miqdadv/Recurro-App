@@ -14,15 +14,80 @@ import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/expo";
+import { track } from "@/lib/analytics/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
   const { user } = useUser();
+  const trackedHomeSummaryRef = useRef(false);
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+
+  useEffect(() => {
+    if (trackedHomeSummaryRef.current) return;
+
+    trackedHomeSummaryRef.current = true;
+    const homeCurrency = HOME_SUBSCRIPTIONS[0]?.currency ?? "USD";
+    const statusCounts = HOME_SUBSCRIPTIONS.reduce(
+      (counts, subscription) => {
+        if (subscription.status === "active") counts.active_count += 1;
+        if (subscription.status === "paused") counts.paused_count += 1;
+        if (subscription.status === "cancelled") counts.cancelled_count += 1;
+        return counts;
+      },
+      { active_count: 0, paused_count: 0, cancelled_count: 0 },
+    );
+
+    track(AnalyticsEvents.HomeBalanceViewed, {
+      amount: HOME_BALANCE.amount,
+      currency: homeCurrency,
+      next_renewal_date: HOME_BALANCE.nextRenewalDate,
+    });
+    track(AnalyticsEvents.UpcomingSubscriptionsViewed, {
+      count: UPCOMING_SUBSCRIPTIONS.length,
+      total_amount: UPCOMING_SUBSCRIPTIONS.reduce(
+        (total, subscription) => total + subscription.price,
+        0,
+      ),
+      currency: UPCOMING_SUBSCRIPTIONS[0]?.currency ?? homeCurrency,
+      soonest_days_left: UPCOMING_SUBSCRIPTIONS[0]?.daysLeft,
+    });
+    track(AnalyticsEvents.SubscriptionListViewed, {
+      count: HOME_SUBSCRIPTIONS.length,
+      total_amount: HOME_SUBSCRIPTIONS.reduce(
+        (total, subscription) => total + subscription.price,
+        0,
+      ),
+      currency: homeCurrency,
+      ...statusCounts,
+    });
+  }, []);
+
+  const handleSubscriptionPress = useCallback((subscription: Subscription) => {
+    setExpandedSubscriptionId((currentId) => {
+      const willCollapse = currentId === subscription.id;
+      track(
+        willCollapse
+          ? AnalyticsEvents.SubscriptionCardCollapsed
+          : AnalyticsEvents.SubscriptionCardExpanded,
+        {
+          subscription_id: subscription.id,
+          subscription_name: subscription.name,
+          category: subscription.category,
+          billing_cycle: subscription.billing,
+          amount: subscription.price,
+          currency: subscription.currency ?? "USD",
+          status: subscription.status,
+        },
+      );
+      return willCollapse ? null : subscription.id;
+    });
+  }, []);
+
   const userLabel =
     user?.fullName?.trim() ||
     user?.primaryEmailAddress?.emailAddress ||
@@ -84,11 +149,7 @@ export default function App() {
           <SubscriptionCard
             {...item}
             expanded={expandedSubscriptionId === item.id}
-            onPress={() =>
-              setExpandedSubscriptionId((currentId) =>
-                currentId === item.id ? null : item.id,
-              )
-            }
+            onPress={() => handleSubscriptionPress(item)}
           />
         )}
         extraData={expandedSubscriptionId}
