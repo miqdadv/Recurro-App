@@ -1,38 +1,38 @@
 import "@/global.css";
-import { FlatList, Image, Text, View } from "react-native";
+import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { styled } from "nativewind";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import images from "@/constants/images";
-import {
-  HOME_BALANCE,
-  HOME_SUBSCRIPTIONS,
-  UPCOMING_SUBSCRIPTIONS,
-} from "@/constants/data";
+import { HOME_BALANCE, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
+import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/expo";
 import { track } from "@/lib/analytics/analytics";
 import { AnalyticsEvents } from "@/lib/analytics/events";
+import { addSubscription, useSubscriptions } from "@/lib/subscriptionsStore";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
   const { user } = useUser();
+  const subscriptions = useSubscriptions();
   const trackedHomeSummaryRef = useRef(false);
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
   useEffect(() => {
     if (trackedHomeSummaryRef.current) return;
 
     trackedHomeSummaryRef.current = true;
-    const homeCurrency = HOME_SUBSCRIPTIONS[0]?.currency ?? "USD";
-    const statusCounts = HOME_SUBSCRIPTIONS.reduce(
+    const homeCurrency = subscriptions[0]?.currency ?? "USD";
+    const statusCounts = subscriptions.reduce(
       (counts, subscription) => {
         if (subscription.status === "active") counts.active_count += 1;
         if (subscription.status === "paused") counts.paused_count += 1;
@@ -57,15 +57,15 @@ export default function App() {
       soonest_days_left: UPCOMING_SUBSCRIPTIONS[0]?.daysLeft,
     });
     track(AnalyticsEvents.SubscriptionListViewed, {
-      count: HOME_SUBSCRIPTIONS.length,
-      total_amount: HOME_SUBSCRIPTIONS.reduce(
+      count: subscriptions.length,
+      total_amount: subscriptions.reduce(
         (total, subscription) => total + subscription.price,
         0,
       ),
       currency: homeCurrency,
       ...statusCounts,
     });
-  }, []);
+  }, [subscriptions]);
 
   const handleSubscriptionPress = useCallback((subscription: Subscription) => {
     const willCollapse = expandedSubscriptionId === subscription.id;
@@ -87,6 +87,11 @@ export default function App() {
     );
   }, [expandedSubscriptionId]);
 
+  const handleCreateSubscription = useCallback((subscription: Subscription) => {
+    addSubscription(subscription);
+    setExpandedSubscriptionId(subscription.id);
+  }, []);
+
   const userLabel =
     user?.fullName?.trim() ||
     user?.primaryEmailAddress?.emailAddress ||
@@ -106,7 +111,13 @@ export default function App() {
                 <Image source={avatarSource} className="home-avatar" />
                 <Text className="home-user-name">{userLabel}</Text>
               </View>
-              <Image source={icons.add} className="home-add-icon" />
+              <Pressable
+                onPress={() => setIsCreateModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Create subscription"
+              >
+                <Image source={icons.add} className="home-add-icon" />
+              </Pressable>
             </View>
 
             <View className="home-balance-card">
@@ -142,7 +153,7 @@ export default function App() {
             <ListHeading title="All Subscriptions" />
           </>
         )}
-        data={HOME_SUBSCRIPTIONS}
+        data={subscriptions}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <SubscriptionCard
@@ -158,6 +169,11 @@ export default function App() {
           <Text className="home-empty-state">No subscriptions yet</Text>
         }
         contentContainerClassName="pb-30"
+      />
+      <CreateSubscriptionModal
+        visible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onCreate={handleCreateSubscription}
       />
     </SafeAreaView>
   );

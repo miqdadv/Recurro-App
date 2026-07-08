@@ -13,6 +13,10 @@ export const AnalyticsEvents = {
   SubscriptionCardExpanded: "subscription card expanded",
   SubscriptionCardCollapsed: "subscription card collapsed",
   SubscriptionDetailsViewed: "subscription details viewed",
+  SearchOpened: "search opened",
+  SearchPerformed: "search performed",
+  SearchCleared: "search cleared",
+  SearchResultSelected: "search result selected",
 } as const;
 
 export type AnalyticsEventName =

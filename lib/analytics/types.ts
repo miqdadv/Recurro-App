@@ -56,6 +56,23 @@ export type AnalyticsEventProperties = {
   [AnalyticsEvents.SubscriptionDetailsViewed]: {
     subscription_id?: string;
   };
+  [AnalyticsEvents.SearchOpened]: {
+    screen_name: "Subscriptions";
+  };
+  [AnalyticsEvents.SearchPerformed]: {
+    screen_name: "Subscriptions";
+    query: string;
+    results_count: number;
+  };
+  [AnalyticsEvents.SearchCleared]: {
+    screen_name: "Subscriptions";
+    previous_query: string;
+  };
+  [AnalyticsEvents.SearchResultSelected]: SubscriptionAnalyticsProperties & {
+    screen_name: "Subscriptions";
+    query: string;
+    results_count: number;
+  };
 };
 
 export type SubscriptionAnalyticsProperties = {
