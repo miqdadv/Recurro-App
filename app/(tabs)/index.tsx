@@ -68,25 +68,24 @@ export default function App() {
   }, []);
 
   const handleSubscriptionPress = useCallback((subscription: Subscription) => {
-    setExpandedSubscriptionId((currentId) => {
-      const willCollapse = currentId === subscription.id;
-      track(
-        willCollapse
-          ? AnalyticsEvents.SubscriptionCardCollapsed
-          : AnalyticsEvents.SubscriptionCardExpanded,
-        {
-          subscription_id: subscription.id,
-          subscription_name: subscription.name,
-          category: subscription.category,
-          billing_cycle: subscription.billing,
-          amount: subscription.price,
-          currency: subscription.currency ?? "USD",
-          status: subscription.status,
-        },
-      );
-      return willCollapse ? null : subscription.id;
-    });
-  }, []);
+    const willCollapse = expandedSubscriptionId === subscription.id;
+
+    setExpandedSubscriptionId(willCollapse ? null : subscription.id);
+    track(
+      willCollapse
+        ? AnalyticsEvents.SubscriptionCardCollapsed
+        : AnalyticsEvents.SubscriptionCardExpanded,
+      {
+        subscription_id: subscription.id,
+        subscription_name: subscription.name,
+        category: subscription.category,
+        billing_cycle: subscription.billing,
+        amount: subscription.price,
+        currency: subscription.currency ?? "USD",
+        status: subscription.status,
+      },
+    );
+  }, [expandedSubscriptionId]);
 
   const userLabel =
     user?.fullName?.trim() ||

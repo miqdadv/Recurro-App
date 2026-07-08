@@ -19,8 +19,8 @@ export default function Settings() {
 
     setIsSigningOut(true);
     try {
-      track(AnalyticsEvents.Logout);
       await signOut();
+      track(AnalyticsEvents.Logout);
       reset();
       router.replace("/(auth)/sign-in");
     } finally {

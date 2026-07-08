@@ -3,7 +3,7 @@ import type { AnalyticsEventName } from "./events";
 import type { AnalyticsEventProperties, ScreenProperties } from "./types";
 
 let client: PostHog | null = null;
-let identifiedUserId: string | null = null;
+let identifiedUserKey: string | null = null;
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -40,15 +40,21 @@ export function identify(
     imageUrl?: string;
   },
 ) {
-  if (identifiedUserId === distinctId) return;
+  const compactedProperties = compact(properties);
+  const identifiedUserKeyValue = JSON.stringify({
+    distinctId,
+    properties: compactedProperties,
+  });
 
-  client?.identify(distinctId, compact(properties));
-  identifiedUserId = distinctId;
+  if (identifiedUserKey === identifiedUserKeyValue) return;
+
+  client?.identify(distinctId, compactedProperties);
+  identifiedUserKey = identifiedUserKeyValue;
 }
 
 export function reset() {
   client?.reset();
-  identifiedUserId = null;
+  identifiedUserKey = null;
 }
 
 export function group(groupType: string, groupKey: string, properties?: Record<string, unknown>) {
