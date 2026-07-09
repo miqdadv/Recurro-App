@@ -15,7 +15,7 @@ import { icons } from "@/constants/icons";
 import { track } from "@/lib/analytics/analytics";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 
-type Frequency = "Monthly" | "Yearly";
+export type Frequency = "Monthly" | "Yearly";
 
 type CreateSubscriptionModalProps = {
   visible: boolean;

@@ -1,4 +1,5 @@
 import { AnalyticsEvents } from "./events";
+import type { Frequency } from "@/components/CreateSubscriptionModal";
 
 type AuthMethod = "password" | "email_code";
 
@@ -80,7 +81,7 @@ export type AnalyticsEventProperties = {
     screen_name: "Home";
     had_name: boolean;
     had_price: boolean;
-    selected_frequency: string;
+    selected_frequency: Frequency;
     selected_category: string;
   };
   [AnalyticsEvents.SubscriptionCreated]: SubscriptionAnalyticsProperties & {
