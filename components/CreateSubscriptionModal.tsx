@@ -12,6 +12,8 @@ import {
   View,
 } from "react-native";
 import { icons } from "@/constants/icons";
+import { track } from "@/lib/analytics/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 type Frequency = "Monthly" | "Yearly";
 
@@ -69,6 +71,13 @@ export default function CreateSubscriptionModal({
   };
 
   const handleClose = () => {
+    track(AnalyticsEvents.SubscriptionCreateModalClosed, {
+      screen_name: "Home",
+      had_name: name.trim().length > 0,
+      had_price: price.trim().length > 0,
+      selected_frequency: frequency,
+      selected_category: category,
+    });
     resetForm();
     onClose();
   };
@@ -81,8 +90,7 @@ export default function CreateSubscriptionModal({
       1,
       frequency === "Monthly" ? "month" : "year",
     );
-
-    onCreate({
+    const subscription: Subscription = {
       id: `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
       name: name.trim(),
       price: parsedPrice,
@@ -95,7 +103,21 @@ export default function CreateSubscriptionModal({
       billing: frequency,
       currency: "USD",
       color: CATEGORY_COLORS[category],
+    };
+
+    track(AnalyticsEvents.SubscriptionCreated, {
+      screen_name: "Home",
+      subscription_id: subscription.id,
+      subscription_name: subscription.name,
+      category: subscription.category,
+      billing_cycle: subscription.billing,
+      amount: subscription.price,
+      currency: subscription.currency ?? "USD",
+      status: subscription.status,
+      renewal_date: subscription.renewalDate ?? "",
     });
+
+    onCreate(subscription);
     resetForm();
     onClose();
   };

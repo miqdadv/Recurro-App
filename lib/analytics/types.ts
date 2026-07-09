@@ -73,6 +73,20 @@ export type AnalyticsEventProperties = {
     query: string;
     results_count: number;
   };
+  [AnalyticsEvents.SubscriptionCreateModalOpened]: {
+    screen_name: "Home";
+  };
+  [AnalyticsEvents.SubscriptionCreateModalClosed]: {
+    screen_name: "Home";
+    had_name: boolean;
+    had_price: boolean;
+    selected_frequency: string;
+    selected_category: string;
+  };
+  [AnalyticsEvents.SubscriptionCreated]: SubscriptionAnalyticsProperties & {
+    screen_name: "Home";
+    renewal_date: string;
+  };
 };
 
 export type SubscriptionAnalyticsProperties = {

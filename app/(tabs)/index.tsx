@@ -92,6 +92,13 @@ export default function App() {
     setExpandedSubscriptionId(subscription.id);
   }, []);
 
+  const handleOpenCreateModal = useCallback(() => {
+    track(AnalyticsEvents.SubscriptionCreateModalOpened, {
+      screen_name: "Home",
+    });
+    setIsCreateModalVisible(true);
+  }, []);
+
   const userLabel =
     user?.fullName?.trim() ||
     user?.primaryEmailAddress?.emailAddress ||
@@ -112,7 +119,7 @@ export default function App() {
                 <Text className="home-user-name">{userLabel}</Text>
               </View>
               <Pressable
-                onPress={() => setIsCreateModalVisible(true)}
+                onPress={handleOpenCreateModal}
                 accessibilityRole="button"
                 accessibilityLabel="Create subscription"
               >

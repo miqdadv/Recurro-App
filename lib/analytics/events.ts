@@ -17,6 +17,9 @@ export const AnalyticsEvents = {
   SearchPerformed: "search performed",
   SearchCleared: "search cleared",
   SearchResultSelected: "search result selected",
+  SubscriptionCreateModalOpened: "subscription create modal opened",
+  SubscriptionCreateModalClosed: "subscription create modal closed",
+  SubscriptionCreated: "subscription created",
 } as const;
 
 export type AnalyticsEventName =
