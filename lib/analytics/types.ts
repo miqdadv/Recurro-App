@@ -1,4 +1,5 @@
 import { AnalyticsEvents } from "./events";
+import type { Frequency } from "@/components/CreateSubscriptionModal";
 
 type AuthMethod = "password" | "email_code";
 
@@ -55,6 +56,37 @@ export type AnalyticsEventProperties = {
   [AnalyticsEvents.SubscriptionCardCollapsed]: SubscriptionAnalyticsProperties;
   [AnalyticsEvents.SubscriptionDetailsViewed]: {
     subscription_id?: string;
+  };
+  [AnalyticsEvents.SearchOpened]: {
+    screen_name: "Subscriptions";
+  };
+  [AnalyticsEvents.SearchPerformed]: {
+    screen_name: "Subscriptions";
+    query: string;
+    results_count: number;
+  };
+  [AnalyticsEvents.SearchCleared]: {
+    screen_name: "Subscriptions";
+    previous_query: string;
+  };
+  [AnalyticsEvents.SearchResultSelected]: SubscriptionAnalyticsProperties & {
+    screen_name: "Subscriptions";
+    query: string;
+    results_count: number;
+  };
+  [AnalyticsEvents.SubscriptionCreateModalOpened]: {
+    screen_name: "Home";
+  };
+  [AnalyticsEvents.SubscriptionCreateModalClosed]: {
+    screen_name: "Home";
+    had_name: boolean;
+    had_price: boolean;
+    selected_frequency: Frequency;
+    selected_category: string;
+  };
+  [AnalyticsEvents.SubscriptionCreated]: SubscriptionAnalyticsProperties & {
+    screen_name: "Home";
+    renewal_date: string;
   };
 };
 
